@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Smart Home Safety Monitor</title>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #101820;
+            color: white;
+            text-align: center;
+        }
+
+        header {
+            padding: 25px;
+            background: #16232f;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 30px;
+        }
+
+        .subtitle {
+            margin-top: 8px;
+            color: #aaa;
+        }
+
+        .dashboard {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            flex-wrap: wrap;
+            padding: 40px 20px;
+        }
+
+        .card {
+            width: 300px;
+            min-height: 230px;
+            background: #1d2b36;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+        }
+
+        .icon {
+            font-size: 50px;
+        }
+
+        .value {
+            font-size: 42px;
+            font-weight: bold;
+            margin: 15px;
+        }
+
+        .normal {
+            color: #00e676;
+        }
+
+        .danger {
+            color: #ff1744;
+        }
+
+        .warning {
+            color: #ff9800;
+        }
+
+        .status {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 15px;
+        }
+
+        button {
+            margin: 15px;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            background: #2196f3;
+            color: white;
+            font-size: 17px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1976d2;
+        }
+
+        #alarmMessage {
+            display: none;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .distance-alarm {
+            background: #b71c1c;
+        }
+
+        .motion-alarm {
+            background: #e65100;
+        }
+
+        .connection {
+            margin: 20px;
+            color: #00e676;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>🏠 Smart Home Safety Monitor</h1>
+    <div class="subtitle">
+        Real-Time Distance & Motion Detection
+    </div>
+</header>
+
+<div class="connection" id="connectionStatus">
+    Connecting to Firebase...
+</div>
+
+<button onclick="enableAlarm()">
+    🔊 Enable Alarm
+</button>
+
+<div class="dashboard">
+
+    <!-- Distance -->
+    <div class="card">
+        <div class="icon">📏</div>
+
+        <h2>Distance</h2>
+
+        <div class="value" id="distance">
+            -- cm
+        </div>
+
+        <div class="status normal" id="distanceStatus">
+            Normal
+        </div>
+    </div>
+
+
+    <!-- Motion -->
+    <div class="card">
+        <div class="icon">🚶</div>
+
+        <h2>Motion Detection</h2>
+
+        <div class="value" id="motion">
+            --
+        </div>
+
+        <div class="status normal" id="motionStatus">
+            Waiting...
+        </div>
+    </div>
+
+</div>
+
+<div id="alarmMessage"></div>
+
+
+<script>
+
+/* =========================================================
+   FIREBASE CONFIGURATION
+   ========================================================= */
+
+const firebaseConfig = {
+
+    databaseURL:
+        "https://smart-home18-default-rtdb.firebaseio.com/"
+
+};
+
+
+/* Initialize Firebase */
+
+firebase.initializeApp(firebaseConfig);
+
+const database = firebase.database();
+
+
+/* =========================================================
+   FIREBASE DATABASE PATHS
+   ========================================================= */
+
+const distanceRef =
+    database.ref("sensors/distance_cm");
+
+
+/*
+   IMPORTANT:
+
+   Change this path if your motion value is stored somewhere else.
+
+   Examples:
+
+   sensors/motion
+   motion
+   sensors/motion_detected
+
+*/
+
+const motionRef =
+    database.ref("sensors/motion");
+
+
+/* =========================================================
+   VARIABLES
+   ========================================================= */
+
+let alarmEnabled = false;
+
+let distanceAlarmPlaying = false;
+let motionAlarmPlaying = false;
+
+
+/* =========================================================
+   AUDIO SYSTEM
+   ========================================================= */
+
+let audioContext;
+
+
+/* Enable browser audio */
+
+function enableAlarm() {
+
+    if (!audioContext) {
+
+        audioContext =
+            new (window.AudioContext ||
+                 window.webkitAudioContext)();
+
+    }
+
+    if (audioContext.state === "suspended") {
+        audioContext.resume();
+    }
+
+    alarmEnabled = true;
+
+    alert("Alarm system enabled!");
+
+}
+
+
+/* =========================================================
+   DISTANCE ALARM
+   ========================================================= */
+
+function distanceAlarm() {
+
+    if (!alarmEnabled || distanceAlarmPlaying)
+        return;
+
+    distanceAlarmPlaying = true;
+
+    playTone(900, 250);
+
+    setTimeout(() => {
+
+        playTone(600, 250);
+
+    }, 300);
+
+    setTimeout(() => {
+
+        distanceAlarmPlaying = false;
+
+    }, 700);
+
+}
+
+
+/* =========================================================
+   MOTION ALARM
+   ========================================================= */
+
+function motionAlarm() {
+
+    if (!alarmEnabled || motionAlarmPlaying)
+        return;
+
+    motionAlarmPlaying = true;
+
+    playTone(1200, 150);
+
+    setTimeout(() => {
+
+        playTone(1200, 150);
+
+    }, 200);
+
+    setTimeout(() => {
+
+        playTone(800, 150);
+
+    }, 400);
+
+    setTimeout(() => {
+
+        motionAlarmPlaying = false;
+
+    }, 700);
+
+}
+
+
+/* =========================================================
+   GENERATE SOUND
+   ========================================================= */
+
+function playTone(frequency, duration) {
+
+    if (!audioContext)
+        return;
+
+    const oscillator =
+        audioContext.createOscillator();
+
+    const gain =
+        audioContext.createGain();
+
+
+    oscillator.connect(gain);
+
+    gain.connect(audioContext.destination);
+
+
+    oscillator.frequency.value =
+        frequency;
+
+    oscillator.type = "square";
+
+
+    gain.gain.setValueAtTime(
+        0.3,
+        audioContext.currentTime
+    );
+
+
+    oscillator.start();
+
+
+    oscillator.stop(
+        audioContext.currentTime +
+        duration / 1000
+    );
+
+}
+
+
+/* =========================================================
+   DISTANCE MONITORING
+   ========================================================= */
+
+distanceRef.on("value", (snapshot) => {
+
+    const distance =
+        Number(snapshot.val());
+
+
+    document.getElementById("distance")
+        .innerText =
+        distance.toFixed(2) + " cm";
+
+
+    const status =
+        document.getElementById("distanceStatus");
+
+
+    if (distance < 5) {
+
+        status.innerText =
+            "⚠️ TOO CLOSE!";
+
+        status.className =
+            "status danger";
+
+
+        showAlarm(
+            "🚨 DISTANCE LESS THAN 5 CM!",
+            "distance-alarm"
+        );
+
+
+        distanceAlarm();
+
+    }
+
+    else {
+
+        status.innerText =
+            "✓ Safe";
+
+        status.className =
+            "status normal";
+
+    }
+
+});
+
+
+/* =========================================================
+   MOTION MONITORING
+   ========================================================= */
+
+motionRef.on("value", (snapshot) => {
+
+    const motion =
+        snapshot.val();
+
+
+    const motionDisplay =
+        document.getElementById("motion");
+
+    const status =
+        document.getElementById("motionStatus");
+
+
+    /*
+       Handles different Firebase values:
+
+       true
+       "true"
+       1
+       "1"
+       "detected"
+       "motion"
+    */
+
+    const detected =
+        motion === true ||
+        motion === 1 ||
+        motion === "1" ||
+        String(motion).toLowerCase() === "true" ||
+        String(motion).toLowerCase() === "detected" ||
+        String(motion).toLowerCase() === "motion";
+
+
+    if (detected) {
+
+        motionDisplay.innerText =
+            "DETECTED";
+
+        motionDisplay.className =
+            "value warning";
+
+
+        status.innerText =
+            "⚠️ Motion Detected!";
+
+        status.className =
+            "status warning";
+
+
+        showAlarm(
+            "🚨 MOTION DETECTED!",
+            "motion-alarm"
+        );
+
+
+        motionAlarm();
+
+    }
+
+    else {
+
+        motionDisplay.innerText =
+            "NONE";
+
+        motionDisplay.className =
+            "value normal";
+
+
+        status.innerText =
+            "✓ No Motion";
+
+        status.className =
+            "status normal";
+
+    }
+
+});
+
+
+/* =========================================================
+   ALARM MESSAGE
+   ========================================================= */
+
+let alarmTimer;
+
+
+function showAlarm(message, className) {
+
+    const alarm =
+        document.getElementById("alarmMessage");
+
+
+    alarm.innerText =
+        message;
+
+    alarm.className =
+        className;
+
+    alarm.style.display =
+        "block";
+
+
+    clearTimeout(alarmTimer);
+
+
+    alarmTimer =
+        setTimeout(() => {
+
+            alarm.style.display =
+                "none";
+
+        }, 1500);
+
+}
+
+
+/* =========================================================
+   FIREBASE CONNECTION STATUS
+   ========================================================= */
+
+const connectedRef =
+    database.ref(".info/connected");
+
+
+connectedRef.on("value", (snapshot) => {
+
+    const status =
+        document.getElementById("connectionStatus");
+
+
+    if (snapshot.val() === true) {
+
+        status.innerText =
+            "🟢 Firebase Connected";
+
+        status.style.color =
+            "#00e676";
+
+    }
+
+    else {
+
+        status.innerText =
+            "🔴 Firebase Disconnected";
+
+        status.style.color =
+            "#ff1744";
+
+    }
+
+});
+
+</script>
+
+</body>
+</html>
